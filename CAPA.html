@@ -479,7 +479,6 @@ function verNavio(id){
 // ── Load & Init ───────────────────────────────────────────────────────
 async function loadData(){
   try{
-
     const res = await fetch("https://api.jsonbin.io/v3/b/69c5f111b7ec241ddca9fc0e/latest", {
       headers: {
         "X-Master-Key": JSONBIN_MASTER_KEY
@@ -492,11 +491,11 @@ async function loadData(){
     const record = data.record || data;
 
     return record.navios || [];
-
   }catch(e){
     console.error("Erro ao carregar:", e);
     return null;
   }
+
 }}
 
 (async()=>{
