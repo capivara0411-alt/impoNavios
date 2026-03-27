@@ -278,7 +278,11 @@ function buildUserChips(){
 
   users.forEach(u=>{
     const p=pc(u);
-    const wip=_allNavios.filter(n=>((n.dados?.navio?.analista||n.dados?.navio?.usuario||'').toUpperCase().trim()===u&&!n.fechado).length;
+    const wip = allNavios.filter(n =>
+  (n.dados?.navio?.analista || n.dados?.navio?.usuario || '')
+    .toUpperCase()
+    .trim() === u && !n.fechado
+).length;
     html+=`<button class="uf-chip" id="chip-${u}" onclick="selectUser('${u}')"
       style="--chip-color:${p.color};--chip-bg:${p.bg};--chip-border:${p.border};">
       <span class="uf-av" style="background:${p.color};">${initials(u)}</span>
