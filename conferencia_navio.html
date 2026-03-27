@@ -694,22 +694,18 @@ function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleString('pt-B
 function esc(s){const d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 
 // ═══════════════════════════════════════════════════════
-// GITHUB GIST SYNC — cada analista tem seu próprio gist
-// CORS 100% liberado, gratuito, sem limite
-// Token gerado em: github.com > Settings > Developer settings
-//   > Personal access tokens > Tokens (classic)
-//   > Scope necessário: apenas "gist"
-// ═══════════════════════════════════════════════════════
+// GITHUB GIST SYNC — UM GIST COMPARTILHADO PARA TODOS
+// ── TROCAR TOKEN AQUI SE NECESSÁRIO ────────────────────
+const GH_TOKEN = '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';
+// ── GIST ID — preenchido automaticamente na 1ª sync ────
+// (não editar manualmente)
+// ───────────────────────────────────────────────────────
+const GITHUB_API = 'https://api.github.com';
+const GIST_FILENAME = 'navios_conferencia.json';
 
-// Token pessoal do dono do sistema — só para leitura pela CAPA
-// Cada analista pode usar o mesmo token de leitura,
-// mas o ideal é ter um token por pessoa (scope: gist)
-const GITHUB_TOKEN = localStorage.getItem('gh_token') || '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';
-const GITHUB_API   = 'https://api.github.com';
-
-function getGhToken(){ return localStorage.getItem('gh_token') || ''; }
-function getGistId(user){ return localStorage.getItem('gh_gist_'+(user||'default')) || null; }
-function setGistId(user, id){ localStorage.setItem('gh_gist_'+(user||'default'), id); }
+function getGhToken(){ return GH_TOKEN; }
+function getGistId(){ return localStorage.getItem('navios_gist_id') || ''; }
+function setGistId(id){ localStorage.setItem('navios_gist_id', id); }
 
 let _syncTimer  = null;
 let _lastSync   = null;
@@ -729,12 +725,7 @@ function updateSyncUI(){
   const msg = document.getElementById('jsonbin-status-msg');
   const btn = document.getElementById('btn-sync-manual');
   if(!dot||!msg) return;
-  if(!getGhToken()){
-    dot.style.background='#e65100'; dot.style.animation='none';
-    msg.innerHTML='<span style="color:var(--orangeL)">⚠️ Token GitHub não configurado — clique <b>⚙ Configurar</b></span>';
-    if(btn){btn.style.borderColor='var(--orange)';btn.style.color='var(--orangeL)';}
-    return;
-  }
+  // token sempre preenchido
   if(_isSyncing){
     dot.style.background='var(--bluL)'; dot.style.animation='blink .5s infinite';
     msg.innerHTML='<span style="color:var(--bluL)">⏳ Sincronizando com GitHub...</span>';
@@ -778,14 +769,10 @@ function abrirConfigSync(){
 }
 
 async function syncGist(manual=false){
-  if(!_loggedUser){ if(manual) toast('Faça login primeiro','err'); return; }
   if(_isSyncing) return;
-
   const token = getGhToken();
-  if(!token){
-    if(manual){ toast('Configure o Token GitHub primeiro — clique ⚙ Configurar','err'); abrirConfigSync(); }
-    return;
-  }
+  // token sempre preenchido via hardcode — esta verificação é só segurança
+  if(!token){ if(manual) toast('Token não configurado','err'); return; }
 
   const db = dbGet();
   if(!db.length && !manual) return;
@@ -793,33 +780,30 @@ async function syncGist(manual=false){
   _isSyncing = true;
   updateSyncUI();
 
-  const filename = 'navios_' + _loggedUser + '.json';
-  const payload  = {
-    versao:       3,
-    analista:     _loggedUser,
+  // payload único com TODOS os navios de TODOS os usuários deste navegador
+  const payload = {
+    versao: 3,
     atualizadoEm: new Date().toISOString(),
-    navios:       db
+    navios: db
   };
-  const fileContent = JSON.stringify(payload, null, 2);
 
   try{
-    const gistId = getGistId(_loggedUser);
-    let url    = gistId ? `${GITHUB_API}/gists/${gistId}` : `${GITHUB_API}/gists`;
-    let method = gistId ? 'PATCH' : 'POST';
+    const gistId = getGistId();
+    const url    = gistId ? `${GITHUB_API}/gists/${gistId}` : `${GITHUB_API}/gists`;
+    const method = gistId ? 'PATCH' : 'POST';
 
     const body = {
-      description: 'Conferência Navios — ' + _loggedUser,
+      description: 'Conferência de Navios — Sistema',
       public: false,
-      files: { [filename]: { content: fileContent } }
+      files: { [GIST_FILENAME]: { content: JSON.stringify(payload, null, 2) } }
     };
 
     const r = await fetch(url, {
       method,
       headers:{
         'Content-Type':  'application/json',
-        'Authorization': 'Bearer ' + token,
-        'Accept':        'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
+        'Authorization': 'token ' + token,
+        'Accept':        'application/vnd.github+json'
       },
       body: JSON.stringify(body)
     });
@@ -828,23 +812,25 @@ async function syncGist(manual=false){
 
     if(r.ok){
       if(!gistId && j.id){
-        setGistId(_loggedUser, j.id);
-        toast('☁️ Gist criado para '+_loggedUser+'!','ok');
+        setGistId(j.id);
+        // salva o ID no toast para facilitar configurar a CAPA
+        console.log('GIST ID CRIADO:', j.id, '| URL:', j.html_url);
+        toast('☁️ Gist criado! ID: '+j.id,'ok');
       }
       _lastSync  = Date.now();
       _syncError = null;
       localStorage.setItem('last_sync', _lastSync);
-      if(manual) toast('✅ Sincronizado com GitHub! ('+_loggedUser+')','ok');
+      if(manual) toast('✅ Sincronizado com GitHub!','ok');
     } else {
       const errMsg = j.message || ('HTTP '+r.status);
       _syncError = errMsg;
-      if(manual) toast('Erro sync: '+errMsg,'err');
-      console.error('GitHub Gist error:', r.status, j);
+      if(manual) toast('❌ Erro sync: '+errMsg,'err');
+      console.error('Gist error:', r.status, j);
     }
   } catch(e){
     _syncError = e.message;
-    if(manual) toast('Erro de conexão: '+e.message,'err');
-    console.error('Sync fetch error:', e);
+    if(manual) toast('❌ Erro de conexão: '+e.message,'err');
+    console.error('Sync error:', e);
   }
   _isSyncing = false;
   updateSyncUI();
@@ -1521,5 +1507,11 @@ setTimeout(updateSyncUI, 200);
 <div style="text-align:center;padding:20px 0 32px;font-size:11px;color:#2a4a35;letter-spacing:.5px;user-select:none;">
   Conferência de Navios — <span style="color:var(--green);font-weight:700;">Versão 1.0</span>
 </div>
+
+<!-- VERSÃO DO SISTEMA -->
+<div style="position:fixed;bottom:8px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(107,143,122,.4);pointer-events:none;z-index:100;letter-spacing:.5px;">
+  v1.2 — Conferência de Navios
+</div>
+
 </body>
 </html>
