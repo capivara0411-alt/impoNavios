@@ -224,6 +224,12 @@ const PALETTE = [
 ];
 // ──────────────────────────────────────────────────────────────────────
 
+// ═══════════════════════════════════════════════════════
+// JSONBIN.IO — lê todos os bins de todos os analistas
+// ═══════════════════════════════════════════════════════
+const JSONBIN_MASTER_KEY = '$2a$10$J12q6YYvny40GUwbuIniWOApoV6W.8c7KZ29un0CxrswLgnYP4Hsy';
+const JSONBIN_API = 'https://api.jsonbin.io/v3';
+
 let _allNavios = [];
 let _currentUser = null;
 let _currentTab = 'wip';
@@ -234,7 +240,7 @@ function assignColors(){
   KNOWN_USERS.forEach((u,i)=>{ _colorMap[u] = i % PALETTE.length; });
   // then any unknown users found in data
   _allNavios.forEach(n=>{
-    const u=(n.dados?.navio?.usuario||'').toUpperCase().trim();
+    const u=(n.dados?.navio?.analista||n.dados?.navio?.usuario||'').toUpperCase().trim();
     if(u && _colorMap[u]===undefined){
       const used=Object.values(_colorMap);
       for(let i=0;i<PALETTE.length;i++){if(!used.includes(i)){_colorMap[u]=i;return;}}
@@ -259,7 +265,7 @@ function showPage(p){document.querySelectorAll('.page').forEach(x=>x.classList.r
 
 // ── User chips ────────────────────────────────────────────────────────
 function buildUserChips(){
-  const inData=new Set(_allNavios.map(n=>(n.dados?.navio?.usuario||'').toUpperCase().trim()).filter(Boolean));
+  const inData=new Set(_allNavios.map(n=>(n.dados?.navio?.analista||n.dados?.navio?.usuario||'').toUpperCase().trim()).filter(Boolean));
   const users=[...KNOWN_USERS.filter(u=>inData.has(u)),...[...inData].filter(u=>!KNOWN_USERS.includes(u))];
 
   const container=document.getElementById('user-chips');
@@ -267,12 +273,12 @@ function buildUserChips(){
   let html=`<button class="uf-chip active" id="chip-ALL" onclick="selectUser(null)"
     style="border-color:rgba(77,157,224,.5);background:rgba(77,157,224,.15);color:var(--bluL);">
     <span class="uf-av" style="background:var(--blue);color:#fff;font-size:11px;">🌐</span>
-    Todos
+    Todos os Navios
   </button>`;
 
   users.forEach(u=>{
     const p=pc(u);
-    const wip=_allNavios.filter(n=>(n.dados?.navio?.usuario||'').toUpperCase().trim()===u&&!n.fechado).length;
+    const wip=_allNavios.filter(n=>((n.dados?.navio?.analista||n.dados?.navio?.usuario||'').toUpperCase().trim()===u&&!n.fechado).length;
     html+=`<button class="uf-chip" id="chip-${u}" onclick="selectUser('${u}')"
       style="--chip-color:${p.color};--chip-bg:${p.bg};--chip-border:${p.border};">
       <span class="uf-av" style="background:${p.color};">${initials(u)}</span>
@@ -332,8 +338,9 @@ function updateStats(){
 
 function filtrarPorUsuario(){
   if(!_currentUser)return _allNavios;
-  return _allNavios.filter(n=>(n.dados?.navio?.usuario||'').toUpperCase().trim()===_currentUser);
+  return _allNavios.filter(n=>(n.dados?.navio?.analista||n.dados?.navio?.usuario||'').toUpperCase().trim()===_currentUser);
 }
+
 
 // ── Tabs ──────────────────────────────────────────────────────────────
 function setTab(t){
@@ -370,7 +377,7 @@ function renderList(){
       }
     }
     const nv=n.dados?.navio||{};
-    const uname=(nv.usuario||'').trim().toUpperCase();
+    const uname=(nv.analista||nv.usuario||'').trim().toUpperCase();
     const p=uname?pc(uname):{color:'#4a7a5a',bg:'transparent',border:'var(--border)'};
     const pct=calcPct(n.dados);
     const inits=initials(uname);
@@ -410,7 +417,7 @@ function verNavio(id){
   const d=n.dados;const nv=d.navio||{};
   const pct=calcPct(d);
   showPage('ship');
-  const uname=(nv.usuario||'').trim().toUpperCase();
+  const uname=(nv.analista||nv.usuario||'').trim().toUpperCase();
   const p=uname?pc(uname):{color:'var(--greenL)',bg:'transparent',border:'transparent'};
 
   let html=`<button class="btn-back-hero" onclick="showPage('main')">← Voltar</button>`;
@@ -422,7 +429,7 @@ function verNavio(id){
       <div class="ship-hero-meta-item">CTIS<b>${esc(nv.ctis||'—')}</b></div>
       <div class="ship-hero-meta-item">Joint<b>${esc(nv.joint||'—')}</b></div>
       <div class="ship-hero-meta-item">Fechado em<b>${fmtDate(n.fechadoAt)}</b></div>
-      ${uname?`<div class="ship-hero-meta-item">Operador<b style="color:${p.color};">👤 ${esc(titleCase(uname))}</b></div>`:''}
+      ${uname?`<div class="ship-hero-meta-item">Analista<b style="color:${p.color};">👤 ${esc(titleCase(uname))}</b></div>`:''}
     </div>
     <div><span class="ship-status ${n.saidaConfirmada?'ss-ok':'ss-pend'}">${n.saidaConfirmada?'✔ SAÍDA CONFIRMADA':'⏳ PENDENTE DE SAÍDA'}</span></div>
   </div>`;
@@ -468,20 +475,54 @@ function verNavio(id){
 // ── Load & Init ───────────────────────────────────────────────────────
 async function loadData(){
   try{
-    const r=await fetch(JSON_FILE+'?t='+Date.now());
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const data=await r.json();
-    return data.navios||data;
-  }catch(e){return null;}
+    // 1. List all bins owned by our master key
+    const listRes = await fetch(`${JSONBIN_API}/b`, {
+      headers:{
+        'X-Master-Key': JSONBIN_MASTER_KEY,
+        'X-Sort-By': 'updatedAt'
+      }
+    });
+    if(!listRes.ok) throw new Error('Erro ao listar bins: HTTP ' + listRes.status);
+    const listData = await listRes.json();
+
+    // bins array
+    const bins = listData || [];
+    if(!bins.length) return [];
+
+    // 2. Fetch each bin and merge all navios
+    const allNavios = [];
+    const fetches = bins.map(async b => {
+      try{
+        const r = await fetch(`${JSONBIN_API}/b/${b.id}/latest`, {
+          headers:{'X-Master-Key': JSONBIN_MASTER_KEY}
+        });
+        if(!r.ok) return;
+        const d = await r.json();
+        const record = d.record || d;
+        const navios = record.navios || record;
+        if(Array.isArray(navios)) allNavios.push(...navios);
+      }catch(e){ console.warn('Erro ao ler bin', b.id, e); }
+    });
+    await Promise.all(fetches);
+    return allNavios;
+  }catch(e){
+    console.error('loadData error:', e);
+    return null;
+  }
 }
 
 (async()=>{
+  // Show loading status
+  const loadingEl = document.getElementById('navios-list');
+  if(loadingEl) loadingEl.innerHTML = '<div class="empty"><div class="emo" style="animation:spin 1s linear infinite;display:inline-block;">⚓</div><p style="margin-top:12px;">Carregando dados de todos os analistas...</p></div>';
+
   const navios=await loadData();
   if(!navios){
     document.getElementById('navios-list').innerHTML=`<div class="error-box">
       <h3>⚠ Dados não encontrados</h3>
-      <p>O arquivo <code>BACKUP_NAVIOS.json</code> não está disponível no servidor.<br><br>
-      O sistema de conferência sincroniza automaticamente a cada 5 minutos.</p>
+      <p>Não foi possível carregar os dados do JSONBin.<br><br>
+      Verifique se algum analista já sincronizou dados pelo sistema de conferência.<br><br>
+      Cada analista precisa abrir o <b>conferencia_navio.html</b>, fazer login e clicar em <b>⬆ Sincronizar</b> ao menos uma vez.</p>
     </div>`;
     document.getElementById('user-chips').innerHTML='';
     return;
