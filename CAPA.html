@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPA — Importação Navios</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d1117;--bg2:#131c24;--bg3:#182030;--bg4:#1e2a3a;
+  --border:#1e3a2a;--border2:#1a3055;
+  --text:#e0eeea;--muted:#6b8f7a;
+  --green:#00873e;--greenL:#4caf7d;--greenBg:#051a0e;
+  --blue:#0057a8;--bluL:#4d9de0;--blueBg:#04152a;
+  --orange:#e65100;--orangeL:#ffa726;--orangeBg:#1a0d00;
+  --red:#c62828;--redL:#ef9a9a;--redBg:#1a0505;
+  --r:10px;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.page{display:none;}.page.active{display:block;}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeInLeft{from{opacity:0;transform:translateX(-10px);}to{opacity:1;transform:translateX(0);}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.88);}to{opacity:1;transform:scale(1);}}
+@keyframes shimmer{0%{background-position:-250% center;}100%{background-position:250% center;}}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.15;}}
+@keyframes pulse-g{0%,100%{box-shadow:0 0 0 0 rgba(0,135,62,0);}60%{box-shadow:0 0 0 4px rgba(0,135,62,.2);}}
+@keyframes pulse-o{0%,100%{box-shadow:0 0 0 0 rgba(230,81,0,0);}60%{box-shadow:0 0 0 4px rgba(230,81,0,.2);}}
+@keyframes topbar-shine{0%{background-position:0% 50%;}100%{background-position:200% 50%;}}
+@keyframes hero-bg{0%{background-position:0% 60%;}100%{background-position:100% 40%;}}
+@keyframes hero-glow{0%,100%{box-shadow:0 4px 20px rgba(0,135,62,.1);}50%{box-shadow:0 8px 40px rgba(0,135,62,.35),inset 0 0 30px rgba(0,135,62,.05);}}
+@keyframes name-glow{0%,100%{text-shadow:none;}45%{text-shadow:0 0 10px rgba(255,255,255,.5),0 0 24px rgba(76,175,125,.45);}70%{text-shadow:0 0 18px rgba(255,255,255,.65),0 0 36px rgba(76,175,125,.55);}}
+@keyframes tag-sweep{0%{left:-100%;}55%,100%{left:160%;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* TOPBAR */
+#topbar{position:fixed;top:0;left:0;right:0;z-index:200;height:58px;background:var(--bg2);border-bottom:2px solid transparent;background-image:linear-gradient(var(--bg2),var(--bg2)),linear-gradient(90deg,var(--green),var(--bluL),var(--greenL),var(--bluL),var(--green));background-origin:border-box;background-clip:padding-box,border-box;background-size:auto,300% 100%;animation:topbar-shine 5s linear infinite;display:flex;align-items:center;padding:0 20px;gap:14px;}
+.tb-logo{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.tb-logo img{height:32px;width:auto;display:none;border-radius:4px;}
+#logo-anchor{color:var(--greenL);font-size:20px;animation:float 3s ease-in-out infinite;display:inline-block;}
+.tb-logo-txt{font-size:15px;font-weight:700;color:#fff;letter-spacing:.5px;}
+.tb-logo-txt span{color:var(--greenL);}
+.tb-tag{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(0,135,62,.15);color:var(--greenL);border:1px solid var(--green);letter-spacing:.5px;text-transform:uppercase;flex-shrink:0;}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.tb-updated{font-size:11px;color:var(--muted);}
+.tb-updated b{color:var(--greenL);}
+.btn-reload{background:none;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:5px 12px;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-reload:hover{border-color:var(--greenL);color:var(--greenL);}
+
+/* LAYOUT */
+.pg{max-width:960px;margin:0 auto;padding:78px 16px 48px;}
+
+/* HERO STRIP */
+.list-hero{border-radius:14px;padding:22px 26px;margin-bottom:18px;background:linear-gradient(135deg,#04150e 0%,#051a0e 40%,#04152a 100%);border:1px solid var(--green);display:flex;align-items:center;gap:16px;flex-wrap:wrap;animation:fadeInUp .5s ease both;}
+.list-hero h1{font-size:20px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;flex:1;min-width:180px;}
+.list-hero h1 .ico{animation:float 3s ease-in-out infinite;display:inline-block;}
+.list-hero-stats{display:flex;gap:10px;flex-wrap:wrap;flex-shrink:0;}
+.stat-pill{font-size:12px;font-weight:700;padding:5px 13px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px;}
+.stat-pill.wip{background:rgba(77,157,224,.15);color:var(--bluL);border:1px solid var(--blue);}
+.stat-pill.pend{background:var(--orangeBg);color:var(--orangeL);border:1px solid var(--orange);}
+.stat-pill.done{background:var(--greenBg);color:var(--greenL);border:1px solid var(--green);}
+
+/* USER FILTER */
+.user-filter-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;animation:fadeInUp .4s .05s ease both;}
+.uf-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;flex-shrink:0;margin-right:4px;}
+.uf-chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;}
+.uf-chip{font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid var(--border);color:var(--muted);background:var(--bg2);cursor:pointer;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.uf-chip:hover{color:#fff;transform:translateY(-1px);}
+.uf-chip.active{color:#fff;}
+.uf-av{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;color:#000;}
+.uf-badge{font-size:9px;padding:1px 5px;border-radius:10px;font-weight:800;color:#000;}
+
+/* SEARCH + TABS */
+.search-bar{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;animation:fadeInUp .4s .1s ease both;transition:border-color .2s,box-shadow .2s;}
+.search-bar:focus-within{border-color:var(--greenL);box-shadow:0 0 0 3px rgba(0,135,62,.1);}
+.search-bar input{flex:1;background:none;border:none;color:var(--text);font-size:14px;font-family:inherit;outline:none;}
+.search-bar input::placeholder{color:var(--muted);}
+.tabs{display:flex;gap:0;margin-bottom:16px;background:var(--bg3);border-radius:10px;padding:4px;border:1px solid var(--border);animation:fadeInUp .4s .15s ease both;}
+.tab-btn{flex:1;background:none;border:none;padding:9px;border-radius:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;text-align:center;}
+.tab-btn.active{background:linear-gradient(135deg,var(--green),#005c2a);color:#fff;}
+
+/* CARDS */
+.navio-card{background:var(--bg3);border:1px solid var(--border);border-left:3px solid #333;border-radius:12px;padding:14px 16px;margin-bottom:9px;display:flex;align-items:center;gap:13px;cursor:pointer;transition:border-color .2s,background .2s,transform .2s,box-shadow .2s;animation:fadeInUp .3s ease both;}
+.navio-card:hover{background:var(--bg4);transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.4);}
+.nc-av{width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#000;animation:float 3.2s ease-in-out infinite;transition:all .2s;}
+.navio-card:hover .nc-av{transform:scale(1.08);}
+.nc-info{flex:1;overflow:hidden;}
+.nc-name{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;}
+.nc-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.nc-meta span{color:var(--bluL);margin-right:8px;}
+.nc-user{font-size:11px;font-weight:700;margin-top:4px;display:flex;align-items:center;gap:5px;}
+.nc-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;}
+.nc-date{font-size:11px;color:var(--muted);}
+.tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;}
+.tag-ok{background:var(--greenBg);color:var(--greenL);border:1px solid var(--green);animation:pulse-g 3s ease-in-out infinite;}
+.tag-pend{background:var(--orangeBg);color:var(--orangeL);border:1px solid var(--orange);animation:pulse-o 2s ease-in-out infinite;}
+.tag-wip{background:var(--blueBg);color:var(--bluL);border:1px solid var(--blue);position:relative;overflow:hidden;}
+.tag-wip::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(77,157,224,.4),transparent);animation:tag-sweep 2.2s ease-in-out infinite;left:-100%;width:60%;}
+.blink-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--orangeL);animation:blink 1.1s ease-in-out infinite;margin-right:5px;vertical-align:middle;}
+.prog-mini{width:80px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin-top:2px;}
+.prog-mini-fill{height:100%;border-radius:2px;transition:width 1s cubic-bezier(.4,0,.2,1);}
+
+/* MONTH SEP */
+.month-sep{display:flex;align-items:center;gap:10px;margin:20px 0 10px;animation:fadeInLeft .4s ease both;}
+.month-sep span{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap;}
+.month-sep hr{flex:1;border:none;border-top:1px solid var(--border);}
+.month-sep .cnt{font-size:10px;color:var(--muted);background:var(--bg2);padding:2px 9px;border-radius:10px;border:1px solid var(--border);}
+
+/* SINGLE SHIP */
+.btn-back-hero{background:none;border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:16px;display:inline-flex;align-items:center;gap:6px;transition:all .15s;animation:fadeInUp .3s ease both;}
+.btn-back-hero:hover{border-color:var(--greenL);color:var(--greenL);}
+.ship-hero{border-radius:14px;padding:26px 28px;margin-bottom:18px;background:linear-gradient(135deg,#031508 0%,#04150e 40%,#04152a 100%);background-size:300% 300%;border:1px solid rgba(76,175,125,.2);animation:hero-bg 7s ease-in-out infinite alternate,hero-glow 5s ease-in-out infinite,fadeInUp .5s ease both;}
+.ship-hero-name{font-size:24px;font-weight:700;color:#fff;margin-bottom:10px;letter-spacing:.3px;text-transform:uppercase;animation:fadeInUp .5s ease both,name-glow 2.8s 1s ease-in-out infinite;}
+.ship-hero-meta{display:flex;flex-wrap:wrap;gap:16px;}
+.ship-hero-meta-item{font-size:12px;color:rgba(255,255,255,.65);}
+.ship-hero-meta-item b{color:#fff;font-size:13px;display:block;margin-top:2px;text-transform:uppercase;}
+.ship-status{display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;animation:scaleIn .4s .5s ease both;}
+.ss-pend{background:var(--orangeBg);color:var(--orangeL);border:1px solid var(--orange);}
+.ss-ok{background:var(--greenBg);color:var(--greenL);border:1px solid var(--green);}
+.prog-row{display:flex;align-items:center;gap:14px;margin-bottom:18px;animation:fadeInUp .5s .3s ease both;}
+.prog-track{flex:1;height:11px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden;}
+.prog-fill-anim{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--green) 0%,var(--greenL) 50%,var(--green) 100%);background-size:300% 100%;animation:shimmer 2s linear infinite;box-shadow:0 0 10px rgba(76,175,125,.5);}
+.prog-label{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;}
+.section{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:17px;margin-bottom:14px;animation:fadeInUp .4s ease both;}
+.sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:8px;color:var(--greenL);}
+.sec-title::before{content:'';width:3px;height:14px;background:var(--green);border-radius:2px;flex-shrink:0;}
+.sec-title.ora{color:var(--orangeL);}.sec-title.ora::before{background:var(--orange);}
+table.ct{width:100%;border-collapse:collapse;font-size:13px;}
+table.ct thead th{background:var(--bg2);color:var(--muted);font-size:10px;text-transform:uppercase;padding:8px 10px;text-align:left;letter-spacing:.8px;border-bottom:2px solid var(--green);}
+table.ct tbody tr{border-bottom:1px solid var(--border);}
+table.ct td{padding:8px 10px;vertical-align:middle;}
+.ilbl{font-weight:500;color:#c8e8d8;font-size:13px;}.ilbl.ora{color:var(--orangeL);font-weight:700;}
+.val-ok{color:var(--greenL);font-weight:600;}.val-nada{color:#4a7a5a;font-weight:600;}.val-pend{color:var(--redL);font-weight:600;}.val-ag{color:#ce93d8;font-weight:600;}.val-val{color:var(--bluL);font-weight:600;}.val-empty{color:#2a4a35;}
+.bdg{display:inline-block;padding:3px 9px;border-radius:4px;font-size:10px;font-weight:700;text-align:center;min-width:52px;letter-spacing:.5px;text-transform:uppercase;}
+.b-ok{background:var(--greenBg);color:var(--greenL);border:1px solid var(--green);}.b-nada{background:#0d1e14;color:#4a7a5a;border:1px solid #2a4a35;}.b-pend{background:var(--redBg);color:var(--redL);border:1px solid var(--red);}.b-ag{background:#150d22;color:#ce93d8;border:1px solid #5c3d8a;}.b-val{background:var(--blueBg);color:var(--bluL);border:1px solid var(--blue);}.b-mt{background:transparent;color:#2a4a35;border:1px solid var(--border);}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;}
+.kv-item{background:var(--bg2);border-radius:8px;padding:10px 12px;border:1px solid var(--border);}
+.kv-item label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.kv-item span{font-size:14px;font-weight:700;color:#fff;}
+.arm-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--border);font-size:13px;}
+.arm-row:last-child{border-bottom:none;}
+.arm-name{color:#c8e8d8;font-weight:500;text-transform:uppercase;}.arm-qtd{color:var(--orangeL);font-weight:700;}
+.arm-obs{font-size:12px;margin-top:3px;padding:5px 10px 8px;text-transform:uppercase;}.arm-obs.ok-obs{color:var(--greenL);}
+.pend-box{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap;text-transform:uppercase;}
+.loading{text-align:center;padding:60px 20px;color:var(--muted);}
+.loading .spin{font-size:32px;display:block;margin-bottom:12px;animation:spin 1s linear infinite;color:var(--greenL);}
+.error-box{background:var(--redBg);border:1px solid var(--red);border-radius:10px;padding:24px;text-align:center;color:var(--redL);}
+.error-box h3{margin-bottom:8px;font-size:16px;}.error-box p{font-size:13px;color:var(--muted);line-height:1.6;}.error-box code{background:var(--bg);padding:2px 6px;border-radius:4px;color:var(--greenL);font-size:11px;}
+.empty{text-align:center;padding:44px 20px;color:var(--muted);}.empty .emo{font-size:36px;margin-bottom:10px;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="tb-logo">
+    <img id="logo-img" src="logo.png" alt=""
+      onload="this.style.display='block';document.getElementById('logo-anchor').style.display='none';"
+      onerror="this.style.display='none';">
+    <span id="logo-anchor">⚓</span>
+    <div class="tb-logo-txt">IMPORTAÇÃO <span>NAVIOS</span></div>
+  </div>
+  <div class="tb-tag">👁 Somente Leitura</div>
+  <div class="tb-right">
+    <div class="tb-updated">Atualizado: <b id="tb-updated">—</b></div>
+    <button class="btn-reload" onclick="location.reload()">↺ Atualizar</button>
+  </div>
+</div>
+
+<!-- PAGE: MAIN LIST -->
+<div id="page-main" class="page active">
+  <div class="pg">
+    <div class="list-hero">
+      <h1><span class="ico">🚢</span> Conferência de Navios</h1>
+      <div class="list-hero-stats">
+        <span class="stat-pill wip"  id="stat-wip">—</span>
+        <span class="stat-pill pend" id="stat-pend">—</span>
+        <span class="stat-pill done" id="stat-done">—</span>
+      </div>
+    </div>
+    <div class="user-filter-bar">
+      <span class="uf-label">👤 Filtrar por operador:</span>
+      <div class="uf-chips" id="user-chips">
+        <div class="loading" style="padding:4px 0;"><span style="font-size:13px;color:var(--muted);">Carregando...</span></div>
+      </div>
+    </div>
+    <div class="search-bar">
+      <span style="font-size:16px;color:var(--muted);">🔍</span>
+      <input id="search-input" placeholder="Buscar navio pelo nome..." oninput="renderList()">
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-wip"  onclick="setTab('wip')">🔄 Em Andamento</button>
+      <button class="tab-btn"        id="tab-pend" onclick="setTab('pend')">⏳ Pend. Saída</button>
+      <button class="tab-btn"        id="tab-done" onclick="setTab('done')">✅ Fechados</button>
+      <button class="tab-btn"        id="tab-all"  onclick="setTab('all')">Todos</button>
+    </div>
+    <div id="navios-list"><div class="loading"><span class="spin">⚓</span>Carregando dados...</div></div>
+  </div>
+</div>
+
+<!-- PAGE: SINGLE SHIP -->
+<div id="page-ship" class="page">
+  <div class="pg" id="ship-content">
+    <div class="loading"><span class="spin">⚓</span>Carregando...</div>
+  </div>
+</div>
+
+<script>
+const JSON_FILE = 'BACKUP_NAVIOS.json';
+
+// ── Usuários e paleta de cores ─────────────────────────────────────────
+// Edite aqui se mudar os usuários no sistema de conferência
+const KNOWN_USERS = ['JAILTON','RODRIGO','ALINE','HUGO','PAULO','SHIRLEY','WESLEY'];
+
+const PALETTE = [
+  {color:'#4caf7d', bg:'rgba(76,175,125,.18)',  border:'rgba(76,175,125,.5)'},
+  {color:'#4d9de0', bg:'rgba(77,157,224,.18)',  border:'rgba(77,157,224,.5)'},
+  {color:'#ffa726', bg:'rgba(255,167,38,.18)',  border:'rgba(255,167,38,.5)'},
+  {color:'#ce93d8', bg:'rgba(206,147,216,.18)', border:'rgba(206,147,216,.5)'},
+  {color:'#ef9a9a', bg:'rgba(239,154,154,.18)', border:'rgba(239,154,154,.5)'},
+  {color:'#80cbc4', bg:'rgba(128,203,196,.18)', border:'rgba(128,203,196,.5)'},
+  {color:'#ffcc02', bg:'rgba(255,204,2,.18)',   border:'rgba(255,204,2,.5)'},
+  {color:'#f48fb1', bg:'rgba(244,143,177,.18)', border:'rgba(244,143,177,.5)'},
+];
+// ──────────────────────────────────────────────────────────────────────
+
+let _allNavios = [];
+let _currentUser = null;
+let _currentTab = 'wip';
+const _colorMap = {}; // user → palette index
+
+function assignColors(){
+  // assign known users first, in order
+  KNOWN_USERS.forEach((u,i)=>{ _colorMap[u] = i % PALETTE.length; });
+  // then any unknown users found in data
+  _allNavios.forEach(n=>{
+    const u=(n.dados?.navio?.usuario||'').toUpperCase().trim();
+    if(u && _colorMap[u]===undefined){
+      const used=Object.values(_colorMap);
+      for(let i=0;i<PALETTE.length;i++){if(!used.includes(i)){_colorMap[u]=i;return;}}
+      _colorMap[u]=Object.keys(_colorMap).length%PALETTE.length;
+    }
+  });
+}
+function pc(user){ return PALETTE[_colorMap[(user||'').toUpperCase().trim()] ?? 0]; }
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function fmtDate(ts){if(!ts)return'—';return new Date(ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function fmtMonthYear(ts){if(!ts)return'Sem data';return new Date(ts).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).replace(/^./,s=>s.toUpperCase());}
+function calcPct(dados){if(!dados?.itens)return 0;let f=0;dados.itens.forEach(i=>{if((i.val||'').trim())f++;});return Math.round(f/23*100);}
+function esc(s){const d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+function valClass(v){const u=(v||'').trim().toUpperCase();if(!u)return'empty';if(u==='OK'||/^\d+.*OK$/i.test(u)||u.endsWith(' OK'))return'ok';if(u==='NADA')return'nada';if(u==='PENDENTE')return'pend';if(u==='AGENDADO')return'ag';return'val';}
+function badgeHtml(v){const c=valClass(v);const labels={ok:'OK',nada:'NADA',pend:'PENDENTE',ag:'AGENDADO',val:v,empty:'—'};const classes={ok:'b-ok',nada:'b-nada',pend:'b-pend',ag:'b-ag',val:'b-val',empty:'b-mt'};const txt=c==='val'?(v.length>9?v.slice(0,9)+'…':v):(labels[c]||'—');return`<span class="bdg ${classes[c]||'b-mt'}">${txt}</span>`;}
+function initials(name){return(name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').slice(0,2)||'?';}
+function titleCase(s){if(!s)return'';return s.charAt(0)+s.slice(1).toLowerCase();}
+
+// ── Pages ─────────────────────────────────────────────────────────────
+function showPage(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById('page-'+p).classList.add('active');}
+
+// ── User chips ────────────────────────────────────────────────────────
+function buildUserChips(){
+  const inData=new Set(_allNavios.map(n=>(n.dados?.navio?.usuario||'').toUpperCase().trim()).filter(Boolean));
+  const users=[...KNOWN_USERS.filter(u=>inData.has(u)),...[...inData].filter(u=>!KNOWN_USERS.includes(u))];
+
+  const container=document.getElementById('user-chips');
+  // "Todos" chip
+  let html=`<button class="uf-chip active" id="chip-ALL" onclick="selectUser(null)"
+    style="border-color:rgba(77,157,224,.5);background:rgba(77,157,224,.15);color:var(--bluL);">
+    <span class="uf-av" style="background:var(--blue);color:#fff;font-size:11px;">🌐</span>
+    Todos
+  </button>`;
+
+  users.forEach(u=>{
+    const p=pc(u);
+    const wip=_allNavios.filter(n=>(n.dados?.navio?.usuario||'').toUpperCase().trim()===u&&!n.fechado).length;
+    html+=`<button class="uf-chip" id="chip-${u}" onclick="selectUser('${u}')"
+      style="--chip-color:${p.color};--chip-bg:${p.bg};--chip-border:${p.border};">
+      <span class="uf-av" style="background:${p.color};">${initials(u)}</span>
+      ${titleCase(u)}
+      ${wip>0?`<span class="uf-badge" style="background:${p.color};">${wip}</span>`:''}
+    </button>`;
+  });
+  container.innerHTML=html;
+
+  // active style on hover for non-active chips
+  document.querySelectorAll('.uf-chip:not(.active)').forEach(c=>{
+    c.addEventListener('mouseenter',()=>{
+      if(!c.classList.contains('active')){
+        c.style.borderColor=c.style.getPropertyValue('--chip-border')||'';
+        c.style.background=c.style.getPropertyValue('--chip-bg')||'';
+        c.style.color=c.style.getPropertyValue('--chip-color')||'#fff';
+      }
+    });
+    c.addEventListener('mouseleave',()=>{
+      if(!c.classList.contains('active')){
+        c.style.borderColor='';c.style.background='';c.style.color='';
+      }
+    });
+  });
+}
+
+function selectUser(user){
+  _currentUser=user;
+  document.querySelectorAll('.uf-chip').forEach(c=>{
+    c.classList.remove('active');
+    c.style.borderColor='';c.style.background='';c.style.color='';
+  });
+  const activeChip=document.getElementById('chip-'+(user||'ALL'));
+  if(activeChip){
+    activeChip.classList.add('active');
+    if(user){
+      const p=pc(user);
+      activeChip.style.borderColor=p.border;
+      activeChip.style.background=p.bg;
+      activeChip.style.color=p.color;
+    } else {
+      activeChip.style.borderColor='rgba(77,157,224,.5)';
+      activeChip.style.background='rgba(77,157,224,.15)';
+      activeChip.style.color='var(--bluL)';
+    }
+  }
+  renderList();
+  updateStats();
+}
+
+function updateStats(){
+  const list=filtrarPorUsuario();
+  document.getElementById('stat-wip').textContent  =list.filter(n=>!n.fechado).length+' em andamento';
+  document.getElementById('stat-pend').textContent =list.filter(n=>n.fechado&&!n.saidaConfirmada).length+' pend. saída';
+  document.getElementById('stat-done').textContent =list.filter(n=>n.fechado&&n.saidaConfirmada).length+' fechados';
+}
+
+function filtrarPorUsuario(){
+  if(!_currentUser)return _allNavios;
+  return _allNavios.filter(n=>(n.dados?.navio?.usuario||'').toUpperCase().trim()===_currentUser);
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────
+function setTab(t){
+  _currentTab=t;
+  ['wip','pend','done','all'].forEach(x=>document.getElementById('tab-'+x)?.classList.remove('active'));
+  document.getElementById('tab-'+t)?.classList.add('active');
+  renderList();
+}
+
+// ── List render ───────────────────────────────────────────────────────
+function renderList(){
+  const q=(document.getElementById('search-input')?.value||'').toUpperCase();
+  let list=filtrarPorUsuario();
+  if(_currentTab==='wip')  list=list.filter(n=>!n.fechado);
+  else if(_currentTab==='pend') list=list.filter(n=>n.fechado&&!n.saidaConfirmada);
+  else if(_currentTab==='done') list=list.filter(n=>n.fechado);
+  if(q) list=list.filter(n=>(n.dados?.navio?.nome||'').toUpperCase().includes(q));
+  list=[...list].sort((a,b)=>(b.fechadoAt||b.updatedAt||0)-(a.fechadoAt||a.updatedAt||0));
+
+  const el=document.getElementById('navios-list');
+  if(!list.length){el.innerHTML='<div class="empty"><div class="emo">🚢</div><p>Nenhum navio encontrado.</p></div>';return;}
+
+  const doGroup=!q&&_currentTab!=='wip';
+  let html='';let lastGrp=null;let idx=0;
+
+  list.forEach(n=>{
+    if(doGroup){
+      const ts=n.fechadoAt||n.updatedAt||0;
+      const grp=fmtMonthYear(ts);
+      if(grp!==lastGrp){
+        lastGrp=grp;
+        const cnt=list.filter(x=>fmtMonthYear(x.fechadoAt||x.updatedAt||0)===grp).length;
+        html+=`<div class="month-sep"><span>${grp}</span><hr><span class="cnt">${cnt} navio${cnt!==1?'s':''}</span></div>`;
+      }
+    }
+    const nv=n.dados?.navio||{};
+    const uname=(nv.usuario||'').trim().toUpperCase();
+    const p=uname?pc(uname):{color:'#4a7a5a',bg:'transparent',border:'var(--border)'};
+    const pct=calcPct(n.dados);
+    const inits=initials(uname);
+
+    let tag='';
+    if(!n.fechado) tag=`<span class="tag tag-wip">${pct}% conferido</span>`;
+    else if(n.saidaConfirmada) tag=`<span class="tag tag-ok">✔ SAÍDA OK</span>`;
+    else tag=`<span class="tag tag-pend"><span class="blink-dot"></span>PEND. SAÍDA</span>`;
+
+    html+=`<div class="navio-card" style="animation-delay:${(idx*.04).toFixed(2)}s;border-left-color:${p.color};" onclick="verNavio('${n.id}')">
+      <div class="nc-av" style="background:${p.bg};border:1px solid ${p.border};color:${p.color};">${inits}</div>
+      <div class="nc-info">
+        <div class="nc-name">${esc(nv.nome||'SEM NOME')}</div>
+        <div class="nc-meta"><span>RAP: ${esc(nv.rap||'—')}</span><span>LLOYD: ${esc(nv.lloyd||'—')}</span><span>CTIS: ${esc(nv.ctis||'—')}</span></div>
+        ${uname?`<div class="nc-user" style="color:${p.color};">👤 ${esc(titleCase(uname))}</div>`:''}
+      </div>
+      <div class="nc-right">
+        ${tag}
+        <div class="prog-mini"><div class="prog-mini-fill" data-pct="${pct}" style="background:${p.color};width:0%;"></div></div>
+        <div class="nc-date">${fmtDate(n.fechadoAt||n.updatedAt)}</div>
+      </div>
+    </div>`;
+    idx++;
+  });
+
+  el.innerHTML=html;
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('.prog-mini-fill[data-pct]').forEach(b=>{
+      setTimeout(()=>{b.style.width=b.getAttribute('data-pct')+'%';},80);
+    });
+  });
+}
+
+// ── Single ship ───────────────────────────────────────────────────────
+function verNavio(id){
+  const n=_allNavios.find(x=>x.id===id);if(!n?.dados)return;
+  const d=n.dados;const nv=d.navio||{};
+  const pct=calcPct(d);
+  showPage('ship');
+  const uname=(nv.usuario||'').trim().toUpperCase();
+  const p=uname?pc(uname):{color:'var(--greenL)',bg:'transparent',border:'transparent'};
+
+  let html=`<button class="btn-back-hero" onclick="showPage('main')">← Voltar</button>`;
+  html+=`<div class="ship-hero">
+    <div class="ship-hero-name">${esc(nv.nome||'SEM NOME')}</div>
+    <div class="ship-hero-meta">
+      <div class="ship-hero-meta-item">RAP<b>${esc(nv.rap||'—')}</b></div>
+      <div class="ship-hero-meta-item">LLOYD<b>${esc(nv.lloyd||'—')}</b></div>
+      <div class="ship-hero-meta-item">CTIS<b>${esc(nv.ctis||'—')}</b></div>
+      <div class="ship-hero-meta-item">Joint<b>${esc(nv.joint||'—')}</b></div>
+      <div class="ship-hero-meta-item">Fechado em<b>${fmtDate(n.fechadoAt)}</b></div>
+      ${uname?`<div class="ship-hero-meta-item">Operador<b style="color:${p.color};">👤 ${esc(titleCase(uname))}</b></div>`:''}
+    </div>
+    <div><span class="ship-status ${n.saidaConfirmada?'ss-ok':'ss-pend'}">${n.saidaConfirmada?'✔ SAÍDA CONFIRMADA':'⏳ PENDENTE DE SAÍDA'}</span></div>
+  </div>`;
+
+  html+=`<div class="prog-row">
+    <div class="prog-track"><div class="prog-fill-anim" id="single-bar" style="width:0%;height:100%;border-radius:6px;transition:width 1.4s cubic-bezier(.4,0,.2,1);"></div></div>
+    <div class="prog-label">${pct}% conferido</div>
+  </div>`;
+
+  html+=`<div class="section"><div class="sec-title">Contêineres</div>
+    <div class="kv-grid">
+      <div class="kv-item"><label>Cheios</label><span>${esc(nv.qtd_cheios||'—')}</span></div>
+      <div class="kv-item"><label>Vazios</label><span>${esc(nv.qtd_vazios||'—')}</span></div>
+    </div>`;
+  if((d.armVazios||[]).length) d.armVazios.forEach(a=>{html+=`<div class="arm-row"><span class="arm-name">${esc(a.nome||'—')}</span><span class="arm-qtd">${esc(a.qtd||'—')}</span></div>`;});
+  html+=`</div>`;
+
+  html+=`<div class="section"><div class="sec-title">Itens de Conferência</div>
+    <table class="ct"><thead><tr>
+      <th style="width:50%">Etapa</th><th style="width:28%">Fechamento</th><th style="width:22%;text-align:center">Status</th>
+    </tr></thead><tbody>`;
+  (d.itens||[]).forEach((item,ri)=>{
+    const isOra=['LISTA EVERGREEN','NAVIO CPO = SEMPRE CPO / COSCO = VINC'].includes(item.lbl);
+    html+=`<tr style="animation:fadeInUp .3s ${(ri*.025).toFixed(2)}s ease both;">
+      <td><span class="ilbl ${isOra?'ora':''}">${esc(item.lbl)}</span></td>
+      <td><span class="val-${valClass(item.val)}">${esc(item.val||'—')}</span></td>
+      <td style="text-align:center">${badgeHtml(item.val)}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+
+  const rn=(title,arr)=>{if(!(arr||[]).length)return'';let s=`<div class="section"><div class="sec-title ora">${title}</div>`;arr.forEach(r=>{const cls=valClass(r.obs);s+=`<div class="arm-row"><span class="arm-name">${esc(r.arm||'—')}${r.qtd?' ('+r.qtd+')':''}</span></div><div class="arm-obs ${cls==='ok'?'ok-obs':''}">${esc(r.obs||'—')}</div>`;});return s+'</div>';};
+  html+=rn('Transbordo',d.notas?.transbordo);
+  html+=rn('IMO / Frigo',d.notas?.imo);
+  html+=rn('Faturamento',d.notas?.fat);
+  if(d.pendencias)html+=`<div class="section"><div class="sec-title ora">Pendências</div><div class="pend-box">${esc(d.pendencias)}</div></div>`;
+
+  document.getElementById('ship-content').innerHTML=html;
+  document.title=`CAPA — ${nv.nome||'Navio'}`;
+  requestAnimationFrame(()=>{setTimeout(()=>{const b=document.getElementById('single-bar');if(b)b.style.width=pct+'%';},100);});
+}
+
+// ── Load & Init ───────────────────────────────────────────────────────
+async function loadData(){
+  try{
+    const r=await fetch(JSON_FILE+'?t='+Date.now());
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    return data.navios||data;
+  }catch(e){return null;}
+}
+
+(async()=>{
+  const navios=await loadData();
+  if(!navios){
+    document.getElementById('navios-list').innerHTML=`<div class="error-box">
+      <h3>⚠ Dados não encontrados</h3>
+      <p>O arquivo <code>BACKUP_NAVIOS.json</code> não está disponível no servidor.<br><br>
+      O sistema de conferência sincroniza automaticamente a cada 5 minutos.</p>
+    </div>`;
+    document.getElementById('user-chips').innerHTML='';
+    return;
+  }
+
+  _allNavios=navios;
+  assignColors();
+
+  const sorted=[...navios].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  if(sorted[0]?.updatedAt) document.getElementById('tb-updated').textContent=fmtDate(sorted[0].updatedAt);
+
+  buildUserChips();
+  updateStats();
+
+  // URL param: direct ship link
+  const params=new URLSearchParams(window.location.search);
+  const navioParam=params.get('navio');
+  if(navioParam){
+    const found=navios.find(n=>(n.dados?.navio?.nome||'').toUpperCase()===navioParam.toUpperCase());
+    if(found){showPage('ship');verNavio(found.id);return;}
+  }
+
+  renderList();
+})();
+</script>
+</body>
+</html>
